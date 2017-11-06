@@ -8,7 +8,8 @@ import React, { Component } from 'react'
 import {
   TouchableWithoutFeedback,
   View,
-  ImagePickerIOS
+  TouchableOpacity,
+  Text,
 } from 'react-native'
 
 import Circle from './Circle'
@@ -25,6 +26,8 @@ import {
 import styles from './styles/gameBoard'
 import PromptArea from './PromptArea'
 
+import { Camera, Permissions } from 'expo';
+
 export default class GameBoard extends Component {
   state: {
     AIInputs: number[],
@@ -32,6 +35,16 @@ export default class GameBoard extends Component {
     result: number,
     round: number
   };
+
+  state = {
+    hasCameraPermission: null,
+    type: Camera.Constants.Type.back,
+  };
+
+  async componentWillMount() {
+    const { status } = await Permissions.askAsync(Permissions.CAMERA);
+    this.setState({ hasCameraPermission: status === 'granted' });
+  }
 
   constructor() {
     super()
@@ -132,12 +145,53 @@ export default class GameBoard extends Component {
         result === GAME_RESULT_NO && result !== GAME_RESULT_TIE) {
       this.setState({ result: GAME_RESULT_TIE })
     }
-
-    console.log('judgeWinner\n------------', this.state)
   }
 
   render() {
     const { userInputs, AIInputs, result } = this.state
+    const { hasCameraPermission } = this.state;
+    
+    let camera = () => {
+      console.log(hasCameraPermission, this.state)
+      if (hasCameraPermission === null) {
+        return <Text> hasCameraPermission = null </Text>;
+      } else if (hasCameraPermission === false) {
+        return <Text>No access to camera</Text>;
+      } else {
+        return (
+          <View style={{ flex: 1 }}>
+            <Camera style={{ flex: 1 }} type={this.state.type}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: 'transparent',
+                  flexDirection: 'row',
+                }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 0.1,
+                    alignSelf: 'flex-end',
+                    alignItems: 'center',
+                  }}
+                  onPress={() => {
+                    this.setState({
+                      type: this.state.type === Camera.Constants.Type.back
+                        ? Camera.Constants.Type.front
+                        : Camera.Constants.Type.back,
+                    });
+                  }}>
+                  <Text
+                    style={{ fontSize: 18, marginBottom: 10, color: 'white' }}>
+                    {' '}Flip{' '}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Camera>
+          </View>
+        );
+      }
+    }
+    
     return (
       <View style={styles.container}>
         <TouchableWithoutFeedback onPress={e => this.boardClickHandler(e)}>
@@ -194,8 +248,12 @@ export default class GameBoard extends Component {
           </View>
         </TouchableWithoutFeedback>
         <PromptArea result={result} onRestart={() => this.restart()} />
-        <ImagePickerIOS canUseCamera={true}/>
+
+        { camera() }
+
       </View>
     )
   }
 }
+
+
